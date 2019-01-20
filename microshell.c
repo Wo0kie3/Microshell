@@ -22,7 +22,7 @@
 #define BG_BLUE "\x1b[104m"
 #define BG_MAGENTA "\x1b[105m"
 #define BG_CYAN "\x1b[106m"
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 2048
 void help(){
 	printf(BLUE);
 	printf("*********************\n");
@@ -31,78 +31,72 @@ void help(){
 	printf("*********************\n");
 	printf(YELLOW);
 	printf("Moje funkcje to: \n");
-	printf("  -cd\n");
-  printf("  -exit\n");
+	printf("  -cd [dest]\n");
+  	printf("  -exit\n");
 	printf("  -help\n");
-	printf("  -touch\n");
-	printf("  -cp\n");
+	printf("  -touch [file_name]\n");
+	printf("  -cp [source] [dest]\n");
 	printf(COLOR_RESET);
 	return;
 }
 
 void cp(char **polecenie){
-		if(polecenie[2]==NULL || polecenie[1]==NULL){
-				if(polecenie[2] != NULL && polecenie[1]==NULL){
-						perror("Arguments error");
-						return;
-				}
+	if(polecenie[1]==NULL){
+		printf("missing file!\n");
+		return;
+	}
+	if(polecenie[2]==NULL){
+		printf("target file missing!\n");
+		return;	
+	}
+	int plik=open(polecenie[1], O_RDONLY);
+	char buff[BUFF_SIZE];
+	int x;
+	if(plik == -1){
+		perror("source file error");
+		return;
+	}
+	if(open(polecenie[2],O_RDWR) != -1){
+		int name_file=open(polecenie[2],O_WRONLY);
+		while((x=read(plik,buff,sizeof(buff)))>0){
+		write(name_file,buff,x);
 		}
-		else{
-				int plik=open(polecenie[1], O_RDONLY);
-				if(plik == -1){
-						perror("source file error");
-						return;
-				}
-				if(open(polecenie[2],O_RDONLY) != -1){
-						printf("%s already exists!\n",polecenie[2]);
-						return;
-				}
-				int nowy = creat(polecenie[2],0666);
-				if(nowy==-1){
-						perror("creat error");
-						return;
-				}
-				char buff[BUFF_SIZE];
-				int x;
-				while((x=read(plik,buff,sizeof(buff)))>0){
-						write(nowy,buff,x);
-				}
-				close(nowy);
-				close(plik);
-		}
+		return;
+	}
+	else if(open(polecenie[2],O_RDWR)==-1){
+		printf("no access to file!");
+		return;
+	}
+	int nowy = creat(polecenie[2],0666);
+	if(nowy==-1){
+		perror("creat error");
+		return;	
+	}
+	while((x=read(plik,buff,sizeof(buff)))>0){
+		write(nowy,buff,x);
+	}
+	close(nowy);
+	close(plik);
 }
 
 void touch(char **polecenie){
-		if(open(polecenie[1],O_RDONLY) != -1){
-				printf("%s already exists!\n",polecenie[1]);
-				return;
-		}
-		else{
-			creat(polecenie[1],0666);
-		}
-}
-
-void ls(char **polecenie){
-		if(fork()==0){
-				execlp("ls","ls",polecenie[1],NULL);
-				perror("execlp");
-				exit(EXIT_FAILURE);
-		}
-		else{
-			  wait(NULL);
-		}
+	if(open(polecenie[1],O_RDONLY) != -1){
+		printf("%s already exists!\n",polecenie[1]);
 		return;
+	}
+	else{
+		creat(polecenie[1],0666);
+	}
 }
 
 void cd(char **polecenie,char *path){
-			printf("%s\n",path);
-			if(strcmp(polecenie[1],"-")==0){
-					chdir(path);
-			}
-			else{
-					chdir(polecenie[1]);
-			}
-			return;
+	if(strcmp(polecenie[1],"-")==0){
+		chdir(path);
+	}
+	else{
+		chdir(polecenie[1]);
+	}
+	return;
 }
 
 void ArgParam (char *result,char **polecenie){
@@ -123,17 +117,17 @@ int main(int argc, char *argv[]){
     	char *result;
     	char napis[BUFF_SIZE];
     	char *polecenie[255];
-			char *prevCD;
 	int i=0;
-
+	char prevCD[2][255];
+	getcwd(cwd,sizeof(cwd));
+	strcpy(prevCD[1],cwd);
     	while(1){
-					char *login=getlogin();
+		char *login=getlogin();
         	getcwd(cwd,sizeof(cwd));
-					printf(COLOR_RESET);
-					printf(GREEN "%s@" RED "%s$>" COLOR_RESET,login,cwd);
-					printf(YELLOW);
+		printf(COLOR_RESET);
+		printf(GREEN "%s@" RED "%s$>" COLOR_RESET,login,cwd);
+		printf(YELLOW);
       		result = fgets(napis, BUFF_SIZE, stdin);
-					prevCD=cwd;
 		i=strlen(napis);
 		napis[i-1]='\0';
      		ArgParam(result,polecenie);
@@ -147,11 +141,10 @@ int main(int argc, char *argv[]){
 	        	exit(0);
 	    	}
 		else if(strcmp(polecenie[0],"cd")==0){
-			cd(polecenie,prevCD);
+			strcpy(prevCD[0],cwd);		
+			cd(polecenie,prevCD[1]);
+			strcpy(prevCD[1],prevCD[0]);
 		}
-		/*else if(strcmp(polecenie[0],"ls")==0){
-			ls(polecenie);
-		}*/
 		else if(strcmp(polecenie[0],"cp")==0){
 			cp(polecenie);
 		}
@@ -159,16 +152,16 @@ int main(int argc, char *argv[]){
 			touch(polecenie);
 		}
 		else{
-				if(fork()==0){
-						exit(execvp(polecenie[0],polecenie));
+			if(fork()==0){
+				exit(execvp(polecenie[0],polecenie));
+			}
+			else{
+				int x=0;
+				wait(&x);
+				if(x != 0){
+					printf("Program returned an error code: %d\n",x);
 				}
-				else{
-						int x=0;
-						wait(&x);
-						if(x != 0){
-								printf("Program returned an error code: %d\n",x);
-						}
-				}
+			}
 		}
 	}
 }
