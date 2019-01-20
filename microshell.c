@@ -9,23 +9,33 @@
 #include <string.h>
 #include <sys/utsname.h>
 #define RED "\x1b[31m"
-#define GREEN "\x1b[32m"
+#define GREEN "\x1b[92m"
 #define YELLOW "\x1b[33m"
 #define BLUE "\x1b[34m"
 #define MAGENTA "\x1b[35m"
-#define CYAN "\x1b[36m]"
+#define CYAN "\x1b[36m"
+#define WHITE "\x1b[97m]"
 #define COLOR_RESET "\x1b[0m"
+#define BG_RED "\x1b[41m"
+#define BG_GREEN "\x1b[102m"
+#define BG_YELLOW "\x1b[103m"
+#define BG_BLUE "\x1b[104m"
+#define BG_MAGENTA "\x1b[105m"
+#define BG_CYAN "\x1b[106m"
 #define BUFF_SIZE 1024
 void help(){
-	printf(RED);
+	printf(BLUE);
 	printf("*********************\n");
-	printf("**Jerzy Łukaszewicz**\n");
-	printf("**Grupa 1CI s444429**\n");
+	printf("**"YELLOW"Jerzy Łukaszewicz"BLUE"**\n");
+	printf("**"YELLOW"Grupa 1CI s444429"BLUE"**\n");
 	printf("*********************\n");
+	printf(YELLOW);
 	printf("Moje funkcje to: \n");
-	printf("-cd\n");
-  printf("-exit\n");
-	printf("-help\n");
+	printf("  -cd\n");
+  printf("  -exit\n");
+	printf("  -help\n");
+	printf("  -touch\n");
+	printf("  -cp\n");
 	printf(COLOR_RESET);
 	return;
 }
@@ -119,7 +129,9 @@ int main(int argc, char *argv[]){
     	while(1){
 					char *login=getlogin();
         	getcwd(cwd,sizeof(cwd));
-        	printf(GREEN "%s@" RED "%s$>" COLOR_RESET,login,cwd);
+					printf(COLOR_RESET);
+					printf(GREEN "%s@" RED "%s$>" COLOR_RESET,login,cwd);
+					printf(YELLOW);
       		result = fgets(napis, BUFF_SIZE, stdin);
 					prevCD=cwd;
 		i=strlen(napis);
@@ -137,9 +149,9 @@ int main(int argc, char *argv[]){
 		else if(strcmp(polecenie[0],"cd")==0){
 			cd(polecenie,prevCD);
 		}
-		else if(strcmp(polecenie[0],"ls")==0){
+		/*else if(strcmp(polecenie[0],"ls")==0){
 			ls(polecenie);
-		}
+		}*/
 		else if(strcmp(polecenie[0],"cp")==0){
 			cp(polecenie);
 		}
@@ -147,7 +159,16 @@ int main(int argc, char *argv[]){
 			touch(polecenie);
 		}
 		else{
-			printf("Wrong command!\n");
+				if(fork()==0){
+						exit(execvp(polecenie[0],polecenie));
+				}
+				else{
+						int x=0;
+						wait(&x);
+						if(x != 0){
+								printf("Program returned an error code: %d\n",x);
+						}
+				}
 		}
 	}
 }
